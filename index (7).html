@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEND Demand Forecast</title>
+<meta name="description" content="Three-year forecast of Education, Health and Care Plans for Kingston, Richmond and Windsor & Maidenhead using DfE SEN2 data. A portfolio project by Sara Iqbal.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="dashboard_data.js" onerror="void 0"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --eng: #52514e; --sn: #898781;
+    --accent-soft: #e9f1fb; --hl: #1f3a5f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --eng: #c3c2b7; --sn: #898781;
+      --accent-soft: #1b2a3d; --hl: #9dc0ef;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --eng: #c3c2b7; --sn: #898781;
+    --accent-soft: #1b2a3d; --hl: #9dc0ef;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 16px 56px; }
+  header { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; }
+  .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+  h1 { font-size: clamp(22px, 3.4vw, 30px); line-height: 1.2; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 0; }
+  h3 { font-size: 15px; margin: 0 0 2px; }
+  .sub { color: var(--ink-2); margin: 0; max-width: 720px; }
+  .btn { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--ink); text-decoration: none; }
+  .actions { display: flex; gap: 8px; }
+  .notice { display: flex; gap: 10px; background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 22px; color: var(--ink-2); font-size: 14px; }
+  .notice strong { color: var(--ink); }
+  .seg { display: inline-flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 3px; margin-bottom: 16px; }
+  .seg button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink-2); padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 26px; }
+  .tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+  .tile .label { font-size: 13px; color: var(--ink-2); }
+  .tile .value { font-size: 28px; font-weight: 700; line-height: 1.15; margin-top: 4px; }
+  .tile .note { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .section-head { margin: 8px 0 14px; }
+  .section-note { color: var(--ink-2); font-size: 14px; margin: 4px 0 0; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px; margin-bottom: 28px; }
+  .card p.cap { margin: 0 0 12px; color: var(--ink-2); font-size: 13px; }
+  .chart { position: relative; height: 300px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--ink-2); margin: 0 0 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .plan .card .big { font-size: 26px; font-weight: 700; }
+  .plan .card .what { font-size: 14px; color: var(--ink-2); }
+  .plan .card .from { font-size: 12.5px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.best td { font-weight: 700; color: var(--hl); }
+  .table-wrap { overflow-x: auto; }
+  .method { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 14px; }
+  .step span { color: var(--ink-2); font-size: 14px; }
+  .step b { display: block; margin-bottom: 4px; }
+  .step .n { font-size: 12px; color: var(--muted); font-weight: 600; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--grid); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Portfolio project · Sara Iqbal, MSc Data Science</p>
+      <h1>Forecasting SEND demand</h1>
+      <p class="sub">A three-year forecast of Education, Health and Care Plans for Kingston, Richmond and Windsor &amp; Maidenhead, and what it means for annual reviews and school places.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" id="nbLink" href="send_ehcp_forecast.ipynb">View notebook</a>
+      <button class="btn" id="themeBtn" type="button">Dark mode</button>
+    </div>
+  </header>
+
+  <div class="notice" role="note"><span aria-hidden="true">ⓘ</span><div id="noticeText"><strong>Official statistics.</strong> Loading data…</div></div>
+
+  <div id="app" hidden>
+    <div class="seg" role="group" aria-label="Choose borough" id="seg"></div>
+
+    <section aria-label="Headline figures"><div class="tiles" id="tiles"></div></section>
+
+    <section aria-labelledby="fc">
+      <div class="grid2">
+        <div class="card">
+          <h3 id="fc">EHC plans: actual and forecast</h3>
+          <p class="cap" id="fcCap"></p>
+          <div class="legend" aria-hidden="true">
+            <span><span class="sw" id="swA"></span>Actual</span>
+            <span><span class="sw" id="swF" style="height:0;border-top:3px dashed"></span>Forecast</span>
+            <span><span class="sw" id="swB" style="height:10px;opacity:.25"></span>80% range</span>
+          </div>
+          <div class="chart"><canvas id="cForecast" role="img" aria-label="Line chart of actual and forecast EHC plans with a shaded range"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Growth compared</h3>
+          <p class="cap" id="ixCap"></p>
+          <div class="legend" id="ixLegend" aria-hidden="true"></div>
+          <div class="chart"><canvas id="cIndex" role="img" aria-label="Line chart comparing growth of the three boroughs and England"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sw">
+      <div class="section-head">
+        <h2 id="sw">So what? Planning implications by January <span class="endYear"></span></h2>
+        <p class="section-note">Every plan must be reviewed at least once a year. School place figures assume today's placement mix continues.</p>
+      </div>
+      <div class="plan" id="plan"></div>
+    </section>
+
+    <section aria-labelledby="tl">
+      <div class="grid2">
+        <div class="card">
+          <h3 id="tl">New plans issued within 20 weeks</h3>
+          <p class="cap">Excluding exceptions. The statutory timescale is 20 weeks from request to final plan.</p>
+          <div class="legend" id="tlLegend" aria-hidden="true"></div>
+          <div class="chart"><canvas id="cTime" role="img" aria-label="Line chart of 20-week timeliness"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Which forecasting model?</h3>
+          <p class="cap" id="btCap"></p>
+          <div class="table-wrap"><table id="btTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="mt">
+      <div class="section-head"><h2 id="mt">How it was built</h2></div>
+      <div class="method">
+        <div class="card step"><span class="n">01</span><b>Load</b><span>DfE SEN2 statutory data: plans at January, new plans, requests and 20-week timeliness, recognised by their columns.</span></div>
+        <div class="card step"><span class="n">02</span><b>Analyse in SQL</b><span>Window functions for growth, a CTE with RANK() for a national league, joins for the request-to-plan pipeline and neighbour comparisons.</span></div>
+        <div class="card step"><span class="n">03</span><b>Test the models</b><span>Six simple models backtested on every council in England. The lowest typical error wins, and the range comes from real past errors.</span></div>
+        <div class="card step"><span class="n">04</span><b>Explain</b><span>Forecasts turned into annual reviews and school places, with a plain-English brief for senior managers.</span></div>
+      </div>
+    </section>
+  </div>
+
+  <footer id="footer">Built by Sara Iqbal with Python, SQL, Power BI and Chart.js. Contains public sector information licensed under the Open Government Licence v3.0.</footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const root = document.documentElement;
+let D = null, target = null;
+const charts = [];
+const n0 = (v) => v === null || v === undefined ? "–" : Math.round(v).toLocaleString("en-GB");
+const p1 = (v) => v === null || v === undefined ? "–" : v.toFixed(1) + "%";
+
+(function () {
+  if (location.hostname.endsWith("github.io")) {
+    const user = location.hostname.split(".")[0];
+    const repo = location.pathname.split("/").filter(Boolean)[0] || (user + ".github.io");
+    $("#nbLink").href = `https://github.com/${user}/${repo}/blob/main/send_ehcp_forecast.ipynb`;
+  }
+})();
+
+function isDark() { const t = root.getAttribute("data-theme"); return t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; }
+function syncTheme() { $("#themeBtn").textContent = isDark() ? "Light mode" : "Dark mode"; }
+$("#themeBtn").addEventListener("click", () => { root.setAttribute("data-theme", isDark() ? "light" : "dark"); syncTheme(); if (D) render(); });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { syncTheme(); if (D) render(); });
+syncTheme();
+
+const T = () => D.targets.find((t) => t.name === target);
+const fc = (area) => D.forecast.filter((r) => r.area === area).sort((a, b) => a.year - b.year);
+const yearVal = (area, year) => (fc(area).find((r) => r.year === year) || {});
+
+function axis() { return { grid: { color: css("--grid"), drawTicks: false }, border: { color: css("--axis") }, ticks: { color: css("--muted"), font: { size: 11.5 }, padding: 6 } }; }
+function tip() { return { backgroundColor: css("--surface"), titleColor: css("--ink"), bodyColor: css("--ink-2"), borderColor: css("--axis"), borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 4 }; }
+
+function renderSeg() {
+  $("#seg").innerHTML = D.targets.map((t) => `<button type="button" data-t="${t.name}" aria-pressed="${t.name === target}">${t.short}</button>`).join("");
+  document.querySelectorAll("#seg button").forEach((b) => b.addEventListener("click", () => { target = b.dataset.t; render(); }));
+}
+
+function renderTiles() {
+  const m = D.meta, t = T(), end = m.latest + m.horizon;
+  const now = yearVal(target, m.latest), fut = yearVal(target, end);
+  const lg = D.league.find((r) => r.area === target) || {};
+  const tl = D.timeliness[target] || {}, tlE = D.timeliness.England || {};
+  const tlYear = Object.keys(tl).sort().pop();
+  $("#tiles").innerHTML = `
+    <div class="tile"><div class="label">EHC plans, January ${m.latest}</div><div class="value">${n0(now.plans)}</div>
+      <div class="note">${lg.cagr_all_pct !== undefined ? `Growing ${p1(lg.cagr_all_pct)} a year since ${m.years[0]}` : ""}</div></div>
+    <div class="tile"><div class="label">Forecast, January ${end}</div><div class="value">${n0(fut.plans)}</div>
+      <div class="note">80% range ${n0(fut.lower)} to ${n0(fut.upper)}</div></div>
+    <div class="tile"><div class="label">Increase by ${end}</div><div class="value">+${n0(fut.plans - now.plans)}</div>
+      <div class="note">${((fut.plans / now.plans - 1) * 100).toFixed(0)}% more than today</div></div>
+    <div class="tile"><div class="label">Issued within 20 weeks, ${tlYear || ""}</div><div class="value">${tlYear ? p1(tl[tlYear]) : "–"}</div>
+      <div class="note">England ${tlYear ? p1(tlE[tlYear]) : "–"}</div></div>`;
+}
+
+function renderPlan() {
+  const short = T().short, end = D.meta.latest + D.meta.horizon;
+  document.querySelectorAll(".endYear").forEach((e) => e.textContent = end);
+  const rows = D.planning.filter((r) => r.Borough === short);
+  const keyNow = `Jan ${D.meta.latest}`, keyEnd = `Jan ${end}`;
+  const nice = { "Annual reviews needed per year (minimum)": "more annual reviews a year",
+    "Plans in mainstream schools": "more children with plans in mainstream schools",
+    "Plans in special schools (all)": "more special school places",
+    "Plans in independent special schools": "more independent special school places",
+    "Plans in alternative provision": "more children with plans in alternative provision" };
+  $("#plan").innerHTML = rows.map((r) => `<div class="card"><div class="big">+${n0(r.Extra)}</div>
+    <div class="what">${nice[r.Measure] || r.Measure}</div><div class="from">${n0(r[keyNow])} now, ${n0(r[keyEnd])} by ${end}</div></div>`).join("");
+}
+
+function renderTable() {
+  const m = D.meta;
+  $("#btCap").textContent = `Typical (median) error when each model forecast the past, across ${m.n_councils} councils. Lower is better.`;
+  const cols = Object.keys(D.backtest[0]).filter((k) => k.includes("ahead"));
+  $("#btTable").innerHTML = `<thead><tr><th>Model</th>${cols.map((c, i) => `<th class="num">${i + 1} yr</th>`).join("")}<th class="num">Average</th></tr></thead><tbody>` +
+    D.backtest.map((r) => `<tr class="${r.model === m.model ? "best" : ""}"><td>${r.model}${r.model === m.model ? " (chosen)" : ""}</td>${cols.map((c) => `<td class="num">${p1(r[c])}</td>`).join("")}<td class="num">${p1(r.Average)}</td></tr>`).join("") + "</tbody>";
+}
+
+function renderCharts() {
+  charts.splice(0).forEach((c) => c.destroy());
+  if (!window.Chart) return;
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const t = T(), m = D.meta, col = t.colour;
+  ["#swA", "#swB"].forEach((s) => $(s).style.background = col); $("#swF").style.borderColor = col;
+  const rows = fc(target), years = rows.map((r) => r.year);
+  const actual = rows.map((r) => r.type === "Actual" ? r.plans : null);
+  const lastA = rows.filter((r) => r.type === "Actual").pop();
+  const fore = rows.map((r) => r.type === "Forecast" ? r.plans : (r.year === lastA.year ? r.plans : null));
+  const lo = rows.map((r) => r.type === "Forecast" ? r.lower : (r.year === lastA.year ? r.plans : null));
+  const hi = rows.map((r) => r.type === "Forecast" ? r.upper : (r.year === lastA.year ? r.plans : null));
+  $("#fcCap").textContent = `${t.short}, January ${m.years[0]} to ${m.latest + m.horizon}. Model: ${m.model}.`;
+  charts.push(new Chart($("#cForecast"), {
+    type: "line",
+    data: { labels: years.map(String), datasets: [
+      { label: "Upper", data: hi, borderWidth: 0, pointRadius: 0, fill: false, backgroundColor: col + "33" },
+      { label: "Lower", data: lo, borderWidth: 0, pointRadius: 0, fill: "-1", backgroundColor: col + "33" },
+      { label: "Actual", data: actual, borderColor: col, backgroundColor: col, borderWidth: 2.6, pointRadius: 3.5, tension: 0.2 },
+      { label: "Forecast", data: fore, borderColor: col, backgroundColor: css("--surface"), borderDash: [6, 4], borderWidth: 2.2, pointRadius: 3.5, pointBorderColor: col, tension: 0.2 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: Object.assign(tip(), {
+        filter: (i) => i.parsed.y !== null && !(i.dataset.label === "Forecast" && i.label == lastA.year),
+        callbacks: { label: (c) => ` ${c.dataset.label === "Upper" ? "Range high" : c.dataset.label === "Lower" ? "Range low" : c.dataset.label}: ${n0(c.parsed.y)}` } }) },
+      scales: { x: Object.assign(axis(), { grid: { display: false } }), y: Object.assign(axis(), { ticks: Object.assign(axis().ticks, { callback: (v) => v.toLocaleString("en-GB") }) }) } },
+  }));
+
+  // Growth index (first year = 100) for all three boroughs and England
+  const areas = [...D.targets.map((x) => x.name), "England"];
+  const colourOf = (a) => a === "England" ? css("--eng") : D.targets.find((x) => x.name === a).colour;
+  const label = (a) => a === "England" ? "England" : D.targets.find((x) => x.name === a).short;
+  $("#ixCap").textContent = `EHC plans indexed to ${m.years[0]} = 100, so boroughs of different sizes can be compared.`;
+  $("#ixLegend").innerHTML = areas.map((a) => `<span><span class="sw" style="background:${a === "England" ? `repeating-linear-gradient(90deg,${colourOf(a)} 0 4px,transparent 4px 7px)` : colourOf(a)}"></span>${label(a)}</span>`).join("");
+  charts.push(new Chart($("#cIndex"), {
+    type: "line",
+    data: { labels: m.years.map(String), datasets: areas.map((a) => {
+      const base = yearVal(a, m.years[0]).plans;
+      return { label: label(a), data: m.years.map((y) => base ? +(yearVal(a, y).plans / base * 100).toFixed(1) : null),
+        borderColor: colourOf(a), backgroundColor: colourOf(a), borderWidth: a === target ? 3.2 : (a === "England" ? 1.6 : 2),
+        borderDash: a === "England" ? [5, 4] : [], pointRadius: 0, pointHoverRadius: 4, tension: 0.2 };
+    }) },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y}` } }) },
+      scales: { x: Object.assign(axis(), { grid: { display: false } }), y: axis() } },
+  }));
+
+  // Timeliness: borough, neighbours average, England
+  const tl = D.timeliness[target] || {}, tlE = D.timeliness.England || {}, tlS = (D.timeliness_sn || {})[target] || {};
+  const ty = Object.keys(tl).sort();
+  const sets = [{ label: t.short, data: ty.map((y) => tl[y] ?? null), borderColor: col, backgroundColor: col, borderWidth: 2.6, pointRadius: 3 }];
+  if (Object.keys(tlS).length) sets.push({ label: "Neighbours' average", data: ty.map((y) => tlS[y] ?? null), borderColor: css("--sn"), backgroundColor: css("--sn"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 });
+  sets.push({ label: "England", data: ty.map((y) => tlE[y] ?? null), borderColor: css("--eng"), backgroundColor: css("--eng"), borderWidth: 1.6, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 4 });
+  $("#tlLegend").innerHTML = sets.map((s) => `<span><span class="sw" style="background:${s.borderDash ? `repeating-linear-gradient(90deg,${s.borderColor} 0 4px,transparent 4px 7px)` : s.borderColor}"></span>${s.label}</span>`).join("");
+  charts.push(new Chart($("#cTime"), {
+    type: "line", data: { labels: ty, datasets: sets.map((s) => Object.assign({ tension: 0.2 }, s)) },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: Object.assign(tip(), { callbacks: { label: (c) => ` ${c.dataset.label}: ${p1(c.parsed.y)}` } }) },
+      scales: { x: Object.assign(axis(), { grid: { display: false } }), y: Object.assign(axis(), { min: 0, max: 100, ticks: Object.assign(axis().ticks, { callback: (v) => v + "%" }) }) } },
+  }));
+}
+
+function render() { renderSeg(); renderTiles(); renderPlan(); renderTable(); renderCharts(); }
+
+function loadData() {
+  if (window.DASHBOARD_DATA) return Promise.resolve(window.DASHBOARD_DATA);
+  return fetch("dashboard_data.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+loadData().then((data) => {
+  D = data; target = D.targets[0].name;
+  $("#noticeText").innerHTML = `<strong>Official statistics.</strong> DfE Education, health and care plans (SEN2), reporting year ${D.meta.latest}. Forecast model chosen by backtesting across ${D.meta.n_councils} councils in England.`;
+  $("#footer").innerHTML += ` Data prepared ${D.meta.generated}.`;
+  $("#app").hidden = false;
+  render();
+}).catch(() => {
+  $("#noticeText").innerHTML = "<strong>Data file not found.</strong> Put <code>dashboard_data.js</code> (made by the notebook) in the same folder as this page.";
+});
+</script>
+</body>
+</html>
